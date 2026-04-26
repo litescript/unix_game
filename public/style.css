@@ -1,0 +1,258 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    color: #ffb000;
+    font-family: monospace;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    line-height: 1.35;
+    min-height: 100vh;
+}
+
+#terminal {
+    padding: 16px 18px 24px 18px;
+    max-width: 100ch;
+}
+
+#scrollback {
+    white-space: pre-wrap;
+}
+
+.motd,
+.echo,
+.output {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: inherit;
+    color: inherit;
+}
+
+.exchange {
+    margin: 0;
+}
+
+.echo {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.output {
+    margin: 0 0 0.4em 0;
+}
+
+.prompt {
+    color: #ffb000;
+    /* preserve the trailing space we put in the label so the live and echo
+       rows share an identical monospace gap between prompt and command. */
+    white-space: pre;
+}
+
+#prompt-line {
+    display: flex;
+    align-items: baseline;
+    margin: 0;
+}
+
+#prompt-line .prompt {
+    flex-shrink: 0;
+}
+
+.input-wrap {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    display: inline-block;
+    line-height: inherit;
+}
+
+.input-wrap input {
+    width: 100%;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    text-indent: 0;
+    outline: none;
+    color: #ffb000;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    caret-color: #ffb000;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+/* Hidden mirror used to measure the pixel width of typed text up to the
+   caret position, so the fake block cursor lands in the right spot. */
+.crt-cursor-measure {
+    visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    white-space: pre;
+    font: inherit;
+    line-height: inherit;
+}
+
+/* Block cursor: hidden outside CRT mode. */
+.crt-cursor {
+    display: none;
+}
+
+::selection {
+    background: #553600;
+    color: #ffd773;
+}
+
+/* ─── CRT mode ────────────────────────────────────────────────────────────
+   Opt-in via `body.crt`. All overlays use pointer-events: none so input
+   behavior is untouched. Honors prefers-reduced-motion. */
+
+body.crt::before {
+    /* scanlines — 1px dark every 3px, stronger contrast than the first pass */
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.36) 0,
+        rgba(0, 0, 0, 0.36) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+}
+
+body.crt::after {
+    /* vignette + warm-center falloff — fakes a slightly bowed phosphor tube */
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    background:
+        radial-gradient(
+            ellipse at center,
+            rgba(255, 176, 0, 0.045) 0%,
+            transparent 28%,
+            rgba(0, 0, 0, 0.32) 65%,
+            rgba(0, 0, 0, 0.78) 100%
+        );
+}
+
+body.crt #terminal::before {
+    /* shimmer — a faint amber band that drifts down the screen */
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9997;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(255, 176, 0, 0.05) 50%,
+        transparent 100%
+    );
+    background-size: 100% 28vh;
+    background-repeat: no-repeat;
+    animation: crt-shimmer 7s linear infinite;
+}
+
+body.crt #terminal {
+    /* phosphor glow — three-layer halo + slow opacity breathing */
+    text-shadow:
+        0 0 1px rgba(255, 176, 0, 0.85),
+        0 0 4px rgba(255, 176, 0, 0.45),
+        0 0 12px rgba(255, 176, 0, 0.22);
+    animation: crt-flicker 4.2s linear infinite;
+}
+
+body.crt .input-wrap input {
+    /* inputs don't always inherit text-shadow under UA styles */
+    text-shadow: inherit;
+    /* hide native caret; the .crt-cursor span takes over */
+    caret-color: transparent;
+}
+
+/* block cursor — visible only in CRT mode. Hollow outline when unfocused,
+   solid blinking amber when focused. JS sets `left` based on caret column. */
+body.crt .input-wrap .crt-cursor {
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1ch;
+    height: 1.35em;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+
+body.crt .input-wrap:not(:focus-within) .crt-cursor {
+    background: transparent;
+    border: 1px solid rgba(255, 176, 0, 0.4);
+}
+
+body.crt .input-wrap:focus-within .crt-cursor {
+    background: rgba(255, 176, 0, 0.85);
+    box-shadow: 0 0 6px rgba(255, 176, 0, 0.55);
+    animation: crt-blink 1s steps(2) infinite;
+}
+
+/* phosphor persistence — applied briefly to each new exchange/output block */
+body.crt .phosphor-burst {
+    animation: phosphor-burst 200ms ease-out;
+}
+
+@keyframes crt-flicker {
+      0% { opacity: 1; }
+     47% { opacity: 0.985; }
+     52% { opacity: 0.99; }
+     73% { opacity: 0.98; }
+     79% { opacity: 1; }
+    100% { opacity: 1; }
+}
+
+@keyframes crt-blink {
+      0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes crt-shimmer {
+      0% { background-position: 0 -28vh; }
+    100% { background-position: 0 128vh; }
+}
+
+@keyframes phosphor-burst {
+    0% {
+        opacity: 0.88;
+        filter: blur(0.4px);
+        text-shadow:
+            0 0 1px rgba(255, 176, 0, 1),
+            0 0 6px rgba(255, 176, 0, 0.7),
+            0 0 16px rgba(255, 176, 0, 0.4);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+        text-shadow:
+            0 0 1px rgba(255, 176, 0, 0.85),
+            0 0 4px rgba(255, 176, 0, 0.45),
+            0 0 12px rgba(255, 176, 0, 0.22);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.crt #terminal,
+    body.crt #terminal::before,
+    body.crt .input-wrap:focus-within .crt-cursor,
+    body.crt .phosphor-burst {
+        animation: none;
+    }
+}
