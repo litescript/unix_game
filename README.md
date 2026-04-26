@@ -2,7 +2,7 @@
 
 ![cs-lab-3 terminal in CRT mode](docs/hero.png)
 
-A small, free, browser-based UNIX investigation game. The player is the
+A small, free, browser-based UNIX investigation experience. The player is the
 overnight `operator` on a fictional university system. Their morning mail
 contains a quiet note from `sysadm` about a small accounting discrepancy.
 They have an hour or so to figure out which account ran something it
@@ -13,7 +13,7 @@ Period and tone are inspired by Clifford Stoll's *The Cuckoo's Egg*; the
 names, host, numbers, and sequence of events are fictional and not a
 recreation of any specific incident. MIT licensed (see [LICENSE](LICENSE)).
 
-## Run
+## Run locally
 
 ```sh
 php -S localhost:8000 -t public
@@ -24,30 +24,19 @@ Then open http://localhost:8000 .
 Requires PHP 8.1+ (for `match`, `str_starts_with`, `str_contains`,
 constructor promotion). No frameworks, no Composer, no build step.
 
-## Project structure
+## Controls
 
-```
-public/
-  index.php       initial page (motd, prompt, htmx wiring)
-  terminal.php    HTMX endpoint — one command per POST
-  style.css       black background, amber monospace
-  htmx.min.js     vendored, pinned 1.9.12
-src/
-  CommandRunner.php       command parser + dispatcher
-  FakeFilesystem.php      in-memory read-only filesystem
-  SessionState.php        thin $_SESSION wrapper
-  ScenarioEpisode1.php    seed data + answer key
-```
+- ↑ / ↓: command history
+- Tab: autocomplete commands and paths
+- Ctrl-L: clear the screen
+- Alt-C: toggle CRT mode (scanlines, phosphor glow, vignette, flicker)
 
 ## Commands
 
+Available commands:
+
 `help`, `pwd`, `cd`, `ls` (`-l`), `cat`, `grep PAT FILE`, `who`, `last`,
 `date`, `clear`, `report …`, `exit`. `help report` shows the report syntax.
-
-The arrow keys cycle through your in-page command history. Tab autocompletes
-commands and paths. Ctrl-L clears the screen. **Alt-C** toggles an optional
-CRT visual mode (scanlines, phosphor glow, soft vignette, slow flicker);
-the preference persists in `localStorage`.
 
 ## Win condition
 
@@ -63,6 +52,21 @@ Tolerances:
 
 After three wrong reports, a single quiet hint is added to the rejection
 message.
+
+## Project structure
+
+```
+public/
+  index.php       initial page (motd, prompt, htmx wiring)
+  terminal.php    HTMX endpoint — one command per POST
+  style.css       black background, amber monospace
+  htmx.min.js     vendored, pinned 1.9.12
+src/
+  CommandRunner.php       command parser + dispatcher
+  FakeFilesystem.php      in-memory read-only filesystem
+  SessionState.php        thin $_SESSION wrapper
+  ScenarioEpisode1.php    seed data + answer key
+```
 
 ## Design notes
 
@@ -80,64 +84,11 @@ message.
   can copy `ScenarioEpisode1.php` and the entry points can switch on a
   single constant.
 
-## Production hardening notes
+## Safety notes
 
-This is intended to eventually live on a public VPS. The code already does:
-
-- `htmlspecialchars` on every dynamic output (`ENT_QUOTES | ENT_SUBSTITUTE`)
-- CSRF token per session, validated on every POST
-- 256-byte cap on command input, control characters rejected (tab allowed)
-- Rolling per-session rate limit (60 commands / 60 s)
-- `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`
-- Session cookie `HttpOnly` + `SameSite=Strict`
-- `display_errors=0`, `log_errors=1`, generic error message on exceptions
-
-Before deploying to a real VPS, also do:
-
-1. **Serve over HTTPS only.** Add `'secure' => true` to
-   `session_set_cookie_params(...)` in `SessionState::start()`. Set
-   `session.cookie_secure=1` in `php.ini`.
-2. **Switch off the dev server.** Use `nginx`+`php-fpm` (or Apache+mod_php).
-   `php -S` is single-threaded and not for production.
-3. **IP-based rate limiting.** The per-session limiter is a fallback;
-   behind a reverse proxy, layer one of:
-   - nginx `limit_req_zone $binary_remote_addr ...`
-   - `fail2ban` watching `php-fpm` access logs
-   - Cloudflare or equivalent in front
-   When you trust the proxy, read the client IP from `X-Forwarded-For`,
-   not `REMOTE_ADDR` directly.
-4. **Tighten PHP.** In production `php.ini`:
-   ```
-   expose_php = Off
-   display_errors = Off
-   display_startup_errors = Off
-   log_errors = On
-   error_log = /var/log/php/cs-lab-3.log
-   session.use_strict_mode = 1
-   session.cookie_httponly = 1
-   session.cookie_secure = 1
-   session.cookie_samesite = "Strict"
-   ```
-5. **Filesystem permissions.** Only `public/` should be reachable from the
-   web; serve only `index.php`, `terminal.php`, `style.css`, `htmx.min.js`.
-   Keep `src/` outside the document root or behind a `deny from all`.
-6. **HTTP headers worth adding at the proxy:**
-   - `Strict-Transport-Security: max-age=63072000; includeSubDomains`
-   - `Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'`
-     (the inline `<script>` in `index.php` for arrow-key history requires
-     either `'unsafe-inline'` or moving that block to a separate file with
-     a nonce — preferable for production)
-   - `Referrer-Policy: no-referrer`
-   - `X-Frame-Options: DENY`
-7. **Resource caps.** `php.ini`: `memory_limit=64M`, `max_execution_time=5`,
-   `post_max_size=8K`, `upload_max_filesize=0`. The endpoint never reads
-   uploads, but tightening these reduces blast radius.
-8. **Session storage.** Default file-based sessions are fine for low
-   volume. If you scale up, move to Redis (`session.save_handler=redis`).
-9. **Logging.** `error_log` already gets exception messages. Add a JSON
-   access-log line in `terminal.php` if you want to track command volume
-   per IP — but be careful not to log player input verbatim if you want
-   to keep the experience private.
+This is a fake UNIX environment. Commands are parsed by the app and never
+executed by the host system. User input does not reach a real shell or real
+filesystem paths.
 
 ## What this game is not
 
@@ -146,3 +97,8 @@ Before deploying to a real VPS, also do:
   log file is and to read carefully.
 - It is not a re-creation of any specific historical incident. The
   numbers, names, hosts, and sequence of events are fiction.
+
+## Scope
+
+This is intentionally small and focused. Additional episodes may be added,
+but the goal is to keep the experience tight and readable.
