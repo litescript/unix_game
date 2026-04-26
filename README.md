@@ -1,5 +1,7 @@
 # cs-lab-3 — Episode 1
 
+![cs-lab-3 terminal in CRT mode](docs/hero.png)
+
 A small, free, browser-based UNIX investigation game. The player is the
 overnight `operator` on a fictional university system. Their morning mail
 contains a quiet note from `sysadm` about a small accounting discrepancy.
