@@ -235,9 +235,11 @@
 
     // ---- CRT toggle (Alt+C, persisted) -----------------------------------
 
+    // CRT is on by default (body.crt is set in index.php). Only opt-out
+    // when the user has explicitly toggled it off via Alt+C.
     try {
-        if (localStorage.getItem(CRT_KEY) === '1') {
-            document.body.classList.add('crt');
+        if (localStorage.getItem(CRT_KEY) === '0') {
+            document.body.classList.remove('crt');
         }
     } catch (e) { /* localStorage may be unavailable (private mode) */ }
 

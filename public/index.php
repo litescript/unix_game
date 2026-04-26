@@ -42,7 +42,7 @@ function h(string $s): string
 <script src="htmx.min.js"></script>
 <script src="terminal.js" defer></script>
 </head>
-<body>
+<body class="crt">
 <div id="terminal">
   <div id="scrollback"><pre class="motd"><?= h($motd) ?></pre><pre class="output">type 'help' for a command list.
 </pre></div>
