@@ -7,3 +7,7 @@
 /tmp/
 /sessions/
 *.log
+
+# local-only Claude session files
+CLAUDE.md
+claude_notes.md
